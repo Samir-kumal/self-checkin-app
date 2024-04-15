@@ -131,7 +131,7 @@ const UserSearch = () => {
       const data = result.data
       setPrintStatus({
         state: true,
-        message: data.message
+        message: 'Card Printed Successfully'
       })
       console.log(data, 'print status Updated')
     
