@@ -2,7 +2,9 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-
+const Store = require('electron-store')
+// Create a new instance of electron-store
+const store = new Store()
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -10,15 +12,55 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
+
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webSecurity: false
     }
   })
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+    mainWindow.maximize();
+  })
+
+  ipcMain.handle('QR-Generate', async (event,args) => {
+    console.log('QR generated here', args)
+    let list = await getPrinters(mainWindow)
+    console.log('All printer available are ', list[0])
+    if(list[0].name === 'Microsoft Print to PDF'){
+      console.log('PDF printer available')
+      event.sender.send('print-error', ' No Real PDF printer available')
+      return
+    }
+    var options = {
+      silent: true,
+      printBackground: true,
+      color: false,
+      margin: {
+        marginType: 'printableArea'
+      },
+      potrait: true,
+      // pagesPerSheet: 1,
+      fitToPage: true,
+      collate: false,
+      copies: 1
+      // header: 'Header of the Page',
+      // footer: 'Footer of the Page'
+    }
+    mainWindow.webContents.print(options, (success, errorType) => {
+      if (!success){
+        console.log(errorType)
+        event.sender.send('print-error', errorType)
+      }
+      
+      else {
+        console.log('Printing done')
+        event.sender.send('print-success', 'Printing done')
+      }
+    })
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -50,7 +92,9 @@ app.whenReady().then(() => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.on('store',getJWT)
+  ipcMain.on('user', getUser)
+
 
   createWindow()
 
@@ -72,3 +116,34 @@ app.on('window-all-closed', () => {
 
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.
+const getPrinters = async (mainWindow) => {
+  const list = await mainWindow.webContents.getPrintersAsync()
+  return list
+}
+
+const getJWT =  (event) => {
+  const jwt = store.get('jwtToken')
+  event.reply('token-data-reply', jwt)
+
+}
+const getUser =  (event) => {
+  const user = store.get('user')
+  event.reply('user-data-reply', user)
+}
+
+ipcMain.handle('setToken', (args) => {
+  store.set('jwtToken', args)
+  console.log('Token stored in store')
+})
+ipcMain.handle('setUser', (args) => {
+  store.set('user', args)
+  console.log('User data stored in store')
+})
+ipcMain.handle('clearToken', () => {
+  store.delete('jwtToken')
+  console.log('Token data deleted from the store')
+})
+ipcMain.handle('clearUser', () => {
+  store.delete('user')
+  console.log('User data Deleted from the store')
+})

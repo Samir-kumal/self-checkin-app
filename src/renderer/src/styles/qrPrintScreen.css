@@ -1,0 +1,17 @@
+.userTitleQR{
+    font-weight: bolder;
+    color: #000000;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+.userPositionQR{
+    font-weight: bold;
+    margin-bottom: 8px;    
+    color: #000000;
+
+}
+.userOrganizationQR{
+    font-weight: bold;
+    color: #000000;
+    margin-bottom: 10px;
+}
